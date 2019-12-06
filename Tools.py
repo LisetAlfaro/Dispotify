@@ -44,32 +44,14 @@ def play_song(song, dir_file):
     return
 
 
-def get_my_music_list(music_folder_path):
-    my_music: Dict[str, Union[Tuple[Any, Any, Any], Tuple[Union[str, Any], Union[str, Any], Union[str, Any]]]] = {}
-    folder_files = os.listdir(music_folder_path)
-    for file in folder_files :
-        if file in my_music :
-            """It is already in the list"""
-            continue
-        extensions = ['.mp3', '.m4a', '.wav', '.wma']
-        if file[-4 :] in extensions :
-            """It's a valid audio file"""
-            file_title = ""
-            file_album = ""
-            file_artist = ""
-            try :
-                audio_file: EasyID3 = EasyID3("./my_music/" + file)
-                if audio_file is None :
-                    continue
-                file_title = audio_file["title"][0]
-                file_album = audio_file["album"][0]
-                file_artist = audio_file["artist"][0]
-                my_music[file] = (file_title, file_album, file_artist)
-
-            except :
-                my_music[file] = (file_title, file_album, file_artist)
-                continue
-    return my_music
+def get_dir_size(the_path):
+    """Get size of a directory tree in bytes."""
+    path_size = 0
+    for path, dirs, files in os.walk(the_path):
+        for fil in files:
+            filename = os.path.join(path, fil)
+            path_size += os.path.getsize(filename)
+    return path_size
 
 
 def get_uri_from_ip_and_port(type_of_node, ip, port):
@@ -136,7 +118,7 @@ def do_broadcast(ip: object, self_port: object, self_uri: object) -> object:
     return list_uri
 
 
-def get_song_for_search(attribute, attribute_name,uri):
+def get_song_for_search(attribute, attribute_name, uri):
     # Get ip and port from the current uri
     ip, port = get_ip_and_port_from_uri(uri)
 
@@ -171,19 +153,15 @@ def get_song_for_search(attribute, attribute_name,uri):
         return list_music
 
 
-def get_song_from_uri(selected_song, uri,server_uri):
+def get_song_from_uri(selected_song, server_uri):
     """
     Create an archive with the song received from the node with the gived uri
     Params:
     song: The song to obtain
-    uri: The uri where the song is located
+    server_uri: The uri where the song is located
+    uri: The uri whose wants the song
     """
 
-    # Get node from uri
-    try:
-        node = Pyro4.Proxy(uri)
-    except (Pyro4.errors.CommunicationError, Pyro4.errors.PyroError):
-        return
     # Get ip and port from the current uri
     ip, port = get_ip_and_port_from_uri(server_uri)
 
@@ -195,7 +173,7 @@ def get_song_from_uri(selected_song, uri,server_uri):
         return
     # Send GET request
     data = 'GET' + ' ' + selected_song
-    print("data: " +data)
+
     try:
         s.send(data.encode())
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError, ConnectionRefusedError,
@@ -206,24 +184,25 @@ def get_song_from_uri(selected_song, uri,server_uri):
     recv_data = raw_recv_data.decode()
 
     if recv_data == "ValarMorghulis":
-        print("Finish handshake")
-        data = 'ValarDohaeris:' + uri
-        print("new data: " + data)
+
+        data = 'ValarDohaeris:'
+
         try:
             s.send(data.encode())
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError, ConnectionRefusedError,
                 OSError):
             return False
-        print("opening file descriptor")
+
         # Open the file descriptor for receive the song
         # and write into it
         f = open(selected_song, "wb")
+
         while True:
             try:
                 # Get data from server.
 
                 input_data = s.recv(1024)
-                print(input_data)
+
                 if not input_data:
                     print("The song has been received correctly")
                     f.close()
