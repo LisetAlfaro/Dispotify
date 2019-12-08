@@ -8,7 +8,7 @@ class Server:
 
     def __init__(self, ip, port):
         self.ip = ip
-        self.port = port
+        self.port = int(port)
         self.uri = get_uri_from_ip_and_port("server", ip, port)
 
         self.my_music = {}
@@ -17,20 +17,21 @@ class Server:
         self.my_music_folder_path = "./my_music/"
         self.shared_music_path = "./shared_music/"
 
+        self._artist_dic = {}  # for artist have the songs
+        self._album_dic = {}  # for album have the songs
+        self._title_dic = {}  # for title have the songs
+
         self._my_music_size = get_dir_size(self.my_music_folder_path)
         self._shared_music_size = get_dir_size(self.shared_music_path)
 
         self.my_music = self.get_my_music_list(self.my_music_folder_path)
         self.shared_music = self.get_my_music_list(self.shared_music_path)
-
-        self._artist_dic = {}  # for artist have the songs
-        self._album_dic = {}  # for album have the songs
-        self._title_dic = {}   # for title have the songs
-
+        # print("music:")
+        # print(self.my_music)
+        # print("Shared:")
+        # print(self.shared_music)
         self.list_uri = []
         # fill this list by broadcast
-
-        server.list_uri.append('PYRO:server@127.0.0.1:8050')
 
         # Initialize Daemon
         daemon = Pyro4.Daemon(self.ip, self.port)
@@ -46,6 +47,22 @@ class Server:
         return self.my_music
 
     @property
+    def get_shared_music(self):
+        return self.shared_music
+
+    @property
+    def get_title_music(self):
+        return self._title_dic
+
+    @property
+    def get_album_music(self):
+        return self._album_dic
+
+    @property
+    def get_artist_music(self):
+        return self._artist_dic
+
+    @property
     def get_shared_music_list(self):
         return self.shared_music
 
@@ -54,12 +71,21 @@ class Server:
         music_list = []
         for server_uri in self.list_uri:
             try:
+                # print("Conectandome a " + server_uri)
                 s = Pyro4.Proxy(server_uri)
-                for song in s.get_music():
+                # print("Server music: ")
+                # print(s.get_music)
+                for song in s.get_music:
+                    # print("Song:" + song)
+                    if song not in music_list:
+                        music_list.append(song)
+                for song in s.get_shared_music:
                     if song not in music_list:
                         music_list.append(song)
             except Pyro4.errors.CommunicationError:
+                print("Can't connect with " + server_uri)
                 continue
+
         return music_list
 
     def get_my_music_list(self, path):
@@ -135,6 +161,7 @@ class Server:
 
                 # The search is by name
                 if attribute == 1:
+                    print("The search is by name")
                     if attribute_name in self.my_music or attribute_name in self.shared_music:
                         print(" I have the song")
                         # music_and_server_list[attribute_name].append(self.uri)
@@ -149,18 +176,19 @@ class Server:
                             continue
                     else:
                         try:
+                            print("Asking to others for song")
                             # Ask to other servers for the song
                             for uri in self.list_uri:
                                 try:
-                                    serv = Pyro4.PRoxy(uri)
-                                    if attribute_name in serv.get_music:
+                                    serv = Pyro4.Proxy(uri)
+                                    if attribute_name in serv.get_music or attribute_name in serv.get_shared_music:
                                         data = "Yes"
                                         s.send(data.encode())
                                         s.close()
                                         break
                                 except Pyro4.errors.CommunicationError:
                                     continue
-                                    get_song_from_uri(attribute_name,uri,)
+                            # If anybody have the song
                             else:
                                 s.send("ALD".encode())
                                 s.close()
@@ -171,62 +199,89 @@ class Server:
                             continue
                 # The search is by Title
                 elif attribute == 2:
-                    # music_and_server_list[attribute_name] = []
-                    # for song in self.my_music:
-                    #     if attribute_name == song[0]:
-                    #         # music_and_server_list[attribute_name].append(self.uri)
-                    #         try:
-                    #             s.send(b"Yes")
-                    #         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
-                    #                 ConnectionRefusedError, OSError):
-                    #             s.close()
-                    #             continue
-                    # else:
-                    #     try:
-                    #         s.send(b"ALD")
-                    #         s.close()
-                    #     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
-                    #             ConnectionRefusedError, OSError):
-                    #         s.close()
-                    #         continue
-
-                # The search is by album
-                elif attribute == 3:
-                    for song in self.my_music:
-                        if attribute_name == song[1]:
-                            try:
-                                s.send(b"Yes")
-                                s.close()
-
-                            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
-                                    ConnectionRefusedError, OSError):
+                    music_list = []
+                    if self.uri not in self.list_uri:
+                        self.list_uri.append(self.uri)
+                    for uri in server.list_uri:
+                        try:
+                            server = Pyro4.Proxy(uri)
+                            if attribute_name in server.get_title_music:
+                                for song in server.get_title_music[attribute_name].Keys():
+                                    if song not in music_list:
+                                        music_list.append(song)
+                        except Pyro4.errors.CommunicationError:
+                            continue
+                    for song in music_list:
+                        try:
+                            s.send(song.encode())
+                        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
+                                ConnectionRefusedError, OSError):
                                 s.close()
                                 continue
+                    else :
+                        try:
+                            s.send(b"ALD")
+                            s.close()
+                        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
+                                ConnectionRefusedError, OSError):
+                            s.close()
+                            continue
+                # The search is by album
+                elif attribute == 3:
+                    music_list = []
+                    if self.uri not in self.list_uri:
+                        self.list_uri.append(self.uri)
+                    for uri in server.list_uri:
+                        try:
+                            server = Pyro4.Proxy(uri)
+                            if attribute_name in server.get_album_music:
+                                for song in server.get_album_music[attribute_name].Keys():
+                                    if song not in music_list:
+                                        music_list.append(song)
+                        except Pyro4.errors.CommunicationError:
+                            continue
+
+                    for song in music_list:
+                        try:
+                            s.send(song.encode())
+                        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
+                                ConnectionRefusedError, OSError) :
+                            s.close()
+                            continue
                     else:
                         try:
                             s.send(b"ALD")
                             s.close()
-
                         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
                                 ConnectionRefusedError, OSError):
                             s.close()
                             continue
                 # The search is by artist
                 elif attribute == 4:
-                    for song in self.my_music:
-                        if attribute_name == song[2]:
-                            try:
-                                s.send(b"Yes")
+                    music_list = []
+                    if self.uri not in self.list_uri:
+                        self.list_uri.append(self.uri)
+                    for uri in server.list_uri :
+                        try:
+                            server = Pyro4.Proxy(uri)
+                            if attribute_name in server.get_artist_music:
+                                for song in server.get_artist_music[attribute_name]:
+                                    if song not in music_list:
+                                        music_list.append(song)
+                        except Pyro4.errors.CommunicationError:
+                            continue
 
-                            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
-                                    ConnectionRefusedError, OSError) :
-                                s.close()
-                                continue
+                    for song in music_list:
+                        try :
+                            s.send(song.encode())
+                        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
+                                ConnectionRefusedError, OSError) :
+                            s.close()
+                            continue
                     else:
                         try:
                             s.send(b"ALD")
                             s.close()
-
                         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
                                 ConnectionRefusedError, OSError) :
                             s.close()
@@ -255,26 +310,23 @@ class Server:
             if data[:3] == 'GET':
                 required_song = data[4:]
 
-                # If I have the song I send the song
+                # If I have the song
 
                 if required_song in self.my_music or required_song in self.shared_music:
                     try:
-                        s.send(b"ValarMorghulis")
+                        s.send(b"OK")
                     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
                             ConnectionRefusedError, OSError):
                         s.close()
                         continue
                     # Finishing handshake
                     expected_ACK = s.recv(1024).decode()
-                    if expected_ACK.find("ValarDohaeris") > -1:
-                        client_uri = expected_ACK[expected_ACK.find(":") + 1:]
-                        client = Pyro4.Proxy(client_uri)
+                    if expected_ACK == "OK":
                         # Sending selected song
                         try:
                             file = open(self.my_music_folder_path + required_song, "rb")
                         except FileNotFoundError:
                             file = open(self.shared_music_path + required_song, "rb")
-
                         while True:
                             chunk = file.read(65536)
                             if not chunk:
@@ -285,21 +337,41 @@ class Server:
                                     ConnectionRefusedError):
                                 break
                         file.close()
-                # I haven't the song, I have to asks others for it
 
+                # I haven't the song, I have to asks others for it
                 else:
-                    for node in self.list_uri:
+                    for uri in self.list_uri:
                         try:
-                            s = Pyro4.Proxy(node)
+                            s = Pyro4.Proxy(uri)
                         except:
                             continue
-                        try:
-                            response = get_song_for_search(1,required_song,s.uri)
-                            if response == "Yes":
-                                get_song_from_uri()
-                        except:
-                            pass
-                 # Else print the error 404
+
+                        if required_song in s.get_music.Keys() or required_song in s.get_shared_music:
+                            if get_song_from_uri(required_song, uri):
+                                try:
+                                    s.send(b"OK")
+                                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ConnectionError,
+                                        ConnectionRefusedError, OSError):
+                                    s.close()
+                                    continue
+                                # Finishing handshake
+                                expected_ACK = s.recv(1024).decode()
+                                if expected_ACK == "OK":
+                                    # Sending selected song
+                                    try :
+                                        file = open("./" + required_song, "rb")
+                                    except FileNotFoundError:
+                                        continue
+                                    while True:
+                                        chunk = file.read(65536)
+                                        if not chunk:
+                                            break
+                                        try:
+                                            s.sendall(chunk)
+                                        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError,
+                                                ConnectionError, ConnectionRefusedError):
+                                            break
+                                    file.close()
 
                 try:
                     s.send(b"Error 404 Song not found")
@@ -380,9 +452,10 @@ class Server:
 
 
 if __name__ == '__main__':
-    ip, port = '127.0.0.1', 8000
-    server = Server(ip, port)
-    Thread(target=waiting_to_broadcast(server.port, server.uri,)).start()
+
+    server = Server("127.0.0.1", input("port"))
+    server.list_uri.append("Pyro:server@127.0.0.1:" + input("Puerto del otro server"))
+    server.list_uri.append(server.get_uri)
     Thread(target=server.wait_for_search).start()
     Thread(target=server.wait_for_get).start()
 

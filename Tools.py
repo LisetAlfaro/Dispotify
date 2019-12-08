@@ -131,6 +131,7 @@ def get_song_for_search(attribute, attribute_name, uri):
 
     # Send Search request
     data = 'SEARCH' + ' ' + str(attribute) + ' ' + attribute_name
+    print("data: "+ data)
     try:
         s.send(data.encode())
 
@@ -138,9 +139,10 @@ def get_song_for_search(attribute, attribute_name, uri):
             OSError):
         return False
     if attribute == 1:
-        data = s.recv(3)
-        if data.decode() == 'Yes':
-            return "Yes"
+        data = s.recv(3).decode()
+        if data == "Yes" or data == "ALD":
+            print("Answer: " + data)
+            return data
 
     else:
         list_music = []
@@ -170,7 +172,7 @@ def get_song_from_uri(selected_song, server_uri):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, int(port) + 1000))
     except (ConnectionRefusedError, OSError):
-        return
+        return False
     # Send GET request
     data = 'GET' + ' ' + selected_song
 
@@ -180,12 +182,12 @@ def get_song_from_uri(selected_song, server_uri):
             OSError):
         return False
 
-    raw_recv_data = s.recv(len("ValarMorghulis"))
+    raw_recv_data = s.recv(2)
     recv_data = raw_recv_data.decode()
 
-    if recv_data == "ValarMorghulis":
+    if recv_data == "OK":
 
-        data = 'ValarDohaeris:'
+        data = 'OK'
 
         try:
             s.send(data.encode())

@@ -13,7 +13,8 @@ class Client:
         self.ip = ip
         self.port = int(port)
         self.servers = []
-        self.servers.append('PYRO:server@127.0.0.1:8000')
+        self.servers.append('PYRO:server@127.0.0.1:8010')
+        self.servers.append('PYRO:server@127.0.0.1:8050')
         self.uri = get_uri_from_ip_and_port("client", ip, port)
 
         # Initialize Daemon
@@ -41,15 +42,14 @@ class Client:
                     self.servers.append(l)
 
     def loop(self):
+        dots = "\n\n" + '*' * 20 + "DSpotify" + '*' * 20 + "\n"
+        print(dots)
         while True:
             # self.broadcast()
             # if len(self.servers) == 0:
             #     print("Nobody answer, please wait")
             #     continue
-            # else:
-            #     print(self.servers)
-            dots = "\n\n\n" + '*' * 20 + "DSpotify" + '*' * 20
-            print(dots)
+
             action = input("Write the number of the action you want to do:\n 1-See list of music\n "
                            "2-Search a song\n 3-Play local music\n 4-Exit \n")
             if action not in ["1", "2", "3","4"]:
@@ -86,10 +86,9 @@ class Client:
                                 answer = input("Song founded...You want listen it?...[Y|n]\n")
                                 if answer == "Y":
                                     try:
-                                        get_song_from_uri(song, s.get_uri)
-                                        play_song(song, './')
-                                        os.remove('./' + song)
-
+                                        if get_song_from_uri(song, s.get_uri):
+                                            play_song(song, './')
+                                            os.remove('./' + song)
                                     except:
                                         print("It was not possible reproduce the song...")
                                         continue
@@ -122,11 +121,11 @@ class Client:
                                 break
                             else:
                                 try:
-                                    get_song_from_uri(answer, s.get_uri)
-                                    play_song(answer, './')
-                                    os.remove('./' + answer)
-                                    go_out = True
-                                    break
+                                    if get_song_from_uri(answer, s.get_uri):
+                                        play_song(answer, './')
+                                        os.remove('./' + answer)
+                                        go_out = True
+                                        break
                                 except:
                                     print("It was not possible reproduce the song ...\nPlease try search it again")
                                     go_out = True
@@ -158,11 +157,11 @@ class Client:
                                 break
                             else:
                                 try:
-                                    get_song_from_uri(answer,s.get_uri)
-                                    play_song(answer, './')
-                                    os.remove('./' + answer)
-                                    go_out = True
-                                    break
+                                    if get_song_from_uri(answer,s.get_uri):
+                                        play_song(answer, './')
+                                        os.remove('./' + answer)
+                                        go_out = True
+                                        break
                                 except:
                                     print("It was not possible reproduce the song ...\nPlease try search it again")
                                     go_out = True
@@ -192,11 +191,11 @@ class Client:
                                 break
                             else:
                                 try:
-                                    get_song_from_uri(answer, s.get_uri)
-                                    play_song(answer, "./")
-                                    os.remove("./" + answer)
-                                    go_out = True
-                                    break
+                                    if get_song_from_uri(answer, s.get_uri):
+                                        play_song(answer, "./")
+                                        os.remove("./" + answer)
+                                        go_out = True
+                                        break
                                 except:
                                     print("It was not possible reproduce the song ...\nPlease try search it again")
                                     go_out = True
