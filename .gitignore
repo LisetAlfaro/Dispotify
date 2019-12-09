@@ -1,2 +1,11 @@
 
+__pycache__/
+
+*.mp3
+
+my_music/file.txt
+
+my_music/
+
+
 shared_music/
