@@ -3,7 +3,7 @@ from Tools import *
 from threading import Thread
 import time
 
-"""Here is the Chord implementation"""
+
 @Pyro4.expose
 class Server:
 
@@ -296,7 +296,7 @@ class Server:
                         except FileNotFoundError:
                             file = open(self.shared_music_path + required_song, "rb")
                         while True:
-                            chunk = file.read(65536)
+                            chunk = file.read(1024)
                             if not chunk:
                                 break
                             try:
