@@ -77,10 +77,10 @@ def do_broadcast(ip: object, self_port: object, self_uri: object) -> object:
     # Sending broadcast
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    # client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     try:
-        client.bind((ip, self_port + 2000))
+        client.bind(('', self_port + 2000))
     except OSError:
         return
     message = b"valarmorghulis"
@@ -185,9 +185,6 @@ def get_song_from_uri(selected_song, server_uri):
     else:
         print("The protocol has failed")
     s.close()
-
-
-
 
 
 if __name__ == '__main__':
